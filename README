@@ -1,0 +1,5 @@
+== filko ==
+
+filko is software for building an internet radio with real knobs, just like radios used to be. To use filko, flash filko.pde to an Arduino (or other Arduino-compatible device with an analog port), connect knobs and switches to the Arduino, and connect that to a computer. On the computer, run mpd and filko.py. filko.py will read the serial connection from the arduino and send commands to mpd.
+
+I use a 12-position rotary switch with a resistor ladder connected to one of the analog ports on the Arduino to select one of the first twelve streams loaded into my mpd playlist.
