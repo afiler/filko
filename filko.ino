@@ -1,8 +1,6 @@
 #include <LiquidCrystal.h>
 
 
-
-
 //   0   1   2   3   4   5   6   7
 // .X  XX  XX  XX  X.  .X  XX  XX
 // .X  X.  .X  ..  X.  .X  X.  .X
@@ -106,12 +104,11 @@ char numerals[10][4] = {
   {4, 8, 9, 6}, // 3
   {5, 6, 0, 1}, // 4
   {7, 4, 9, 6}, // 5
-  {2, 4, 5, 6}, // 6
-  {0, 3, 0, 1}, // 7
+  {7, 4, 5, 6}, // 6
+  {2, 3, 0, 1}, // 7
   {7, 8, 5, 6}, // 8
   {7, 8, 0, 1}
 };
-
 
 
 
@@ -164,8 +161,12 @@ void setup() {
   put_num(3, 6);
   put_num(4, 9);
   put_num(5, 12);
-  put_num(6, 15);
-  put_num(7, 18);
+  delay(1000);
+  put_num(6, 0);
+  put_num(7, 3);
+  put_num(8, 6);
+  put_num(9, 9);
+  put_num(0, 12);
   delay(1000);
   
   Serial.begin(9600);
@@ -184,15 +185,19 @@ void loop() {
     digitalRead(SW2_PIN),
     selectorVal); */
 
-  //snprintf(outStr, 80, "%d", which_pin());
-  lcd.setCursor(0,1);
-  //lcd.print(outStr);
-  lcd.print(titles[selectorVal]);
-
-  //lcd.println(which_pin());
-  //Serial.println(outStr);
-  //delay(100);
+  //lcd.setCursor(0,1);
+  //lcd.print(titles[selectorVal]);
   //check_pins();
+
+  //lcd.clear();
+  put_num(0, 0);
+  put_num(0, 3);
+  lcd.setCursor(5, 0);
+  lcd.print("\xa5");
+  lcd.setCursor(5, 1);
+  lcd.print("\xa5");
+  put_num(selectorVal / 10, 6);
+  put_num(selectorVal % 10, 9);
   
   handle_serial();
 }
