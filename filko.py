@@ -2,7 +2,7 @@
 
 import os, subprocess, signal
 
-serial_port = '/dev/ttyUSB0'
+serial_port = '/dev/tty.SLAB_USBtoUART' # '/dev/ttyUSB0'
 
 resistors = [506, 433, 335, 312, 786, 724, 611, 565, 289, 201, 88, 32]
 
@@ -15,7 +15,12 @@ external_streams = {
 class Player(object):
   def __init__(self):
      self.ext_player = None
-     self.serial = open(serial_port)
+     
+     try:
+       import serial
+       self.serial = serial.Serial(serial_port)
+     except:
+       self.serial = open(serial_port)
      
      rvalues = dict(zip(resistors, range(1, len(resistors)+1)))
 
@@ -56,6 +61,16 @@ class Player(object):
     print "mpc stop"
     os.system("mpc stop")
 
+  def setup(self):
+    print "setting up"
+    for i in range(0, 12):
+      s = "t%02dPyTitle #%d\n"  % (i, i)
+      print s,
+      self.serial.write(s)
+      resp = self.serial.readline()
+      if resp != 'ok':
+        print "Error: %s" % resp
+
   def loop(self):
     selection = 0
     power = False
@@ -90,4 +105,5 @@ class Player(object):
         pass #print "x"
 
 p = Player()
+p.setup()
 p.loop()
