@@ -1,3 +1,11 @@
+// X     XXXX  XXXX  X  X  XXXX  XXXX  XXXX   XXXX  XXXX                                    
+// X        X     X  X  X  X     X     X  X   X  X  X  X                                    
+// X     XXXX  XXXX  XXXX  XXXX  XXXX  X  X   XXXX  XXXX                                    
+// X     X        X     X     X  X  X     X   X  X     X                                    
+// X     X        X     X     X  X  X     X   X  X     X                                    
+// X     XXXX  XXXX     X  XXXX  XXXX     X   XXXX     X                                    
+
+
 //   0   1   2   3   4   5   6   7
 // .X  XX  XX  XX  X.  .X  XX  XX
 // .X  X.  .X  ..  X.  .X  X.  .X
@@ -94,7 +102,7 @@ char char_blocks[8][8]  = {
   }
 };
 
-char numerals[10][4] = {
+/* char numerals[10][4] = {
   {2, 3, 5, 6}, // 0
   {0, 1, 0, 1}, // 1
   {4, 8, 5, 9}, // 2
@@ -102,6 +110,19 @@ char numerals[10][4] = {
   {5, 6, 0, 1}, // 4
   {7, 4, 9, 6}, // 5
   {7, 4, 5, 6}, // 6
+  {2, 3, 0, 1}, // 7
+  {7, 8, 5, 6}, // 8
+  {7, 8, 0, 1}  // 9
+}; */
+
+char numerals[10][4] = {
+  {2, 3, 5, 6}, // 0
+  {0, 1, 0, 1}, // 1
+  {4, 8, 5, 9}, // 2
+  {4, 8, 9, 6}, // 3
+  {5, 6, 0, 1}, // 4
+  {7, 4, 9, 6}, // 5
+  {7, 9, 5, 6}, // 6
   {2, 3, 0, 1}, // 7
   {7, 8, 5, 6}, // 8
   {7, 8, 0, 1}  // 9

@@ -1,37 +1,26 @@
 #!/usr/bin/python
 
-import os, subprocess, signal
-
-serial_port = '/dev/tty.SLAB_USBtoUART' # '/dev/ttyUSB0'
-
-resistors = [506, 433, 335, 312, 786, 724, 611, 565, 289, 201, 88, 32]
-
-external_streams = {
-  2: ('cvlc', 'http://www.bbc.co.uk/radio/listen/live/r4.asx'),
-  3: ('mplayer', 'http://out1.cbc.icy.abacast.com:80/cbc-cbcr1vcr-96'),
-  5: ('mplayer', 'mms://streaming.radionz.co.nz/national-mbr'),
-}
+import os, subprocess, signal, yaml
+from time import localtime, strftime, sleep
 
 class Player(object):
-  def __init__(self):
-     self.ext_player = None
-     
-     try:
-       import serial
-       self.serial = serial.Serial(serial_port)
-     except:
-       self.serial = open(serial_port)
-     
-     rvalues = dict(zip(resistors, range(1, len(resistors)+1)))
-
-     last = 0
-     self.rval_lbounds = []
-     self.selections = []
-
-     for rval in sorted(resistors):
-       self.rval_lbounds.append(rval-((rval-last)/2))
-       self.selections.append(rvalues[rval])
-       last = rval
+  def __init__(self, config_file="filko.yaml"):
+    self.config = yaml.load(file(config_file))
+    self.streams = self.config['streams']
+    
+    self.ext_player = None
+    
+    try:
+      import serial
+      self.serial = serial.Serial(self.config['serial_port'])
+    except:
+      self.serial = open(self.config['serial_port'])
+      
+    self.selection = 0
+    self.power = False
+    self.sw1 = False
+    self.sw2 = False
+    self.timestr = ""
 
   def get_selection(self, rval):
     for i, j in reversed(list(enumerate(self.rval_lbounds))):
@@ -39,13 +28,22 @@ class Player(object):
     return self.selections[i]
 
   def play(self, selection):
+    print "Play: %s" % repr(selection)
+    print "ext_player: %s\n%s" % (self.ext_player, dir(self.ext_player))
     self.stop_external()
-    if selection in external_streams:
-      print "playing %s" % str(external_streams[selection])
-      self.ext_player = subprocess.Popen(external_streams[selection])
+    
+    stream = self.streams[selection]
+    print "playing %s" % str(stream)
+    if 'player' in stream:
+      self.ext_player = self.popen((stream['player'], stream['url']))
     else:
-      print "mpc play %s" % selection
-      os.system("mpc play %s" % selection)
+      self.ext_player = self.popen(
+        'curl "%s" | madplay -' % stream['url'], shell=True)
+    #if selection in streams:
+    #  print "playing %s" % str(streams[selection])
+    #  self.ext_player = self.popen(streams[selection])
+    #else:
+    #  self.ext_player = self.popen("/usr/bin/mpc play %s" % selection)
 
   def stop(self):
     self.stop_external()
@@ -56,54 +54,98 @@ class Player(object):
       print "stopping subprocess"
       #self.ext_player.send_signal(signal.SIGINT)
       self.ext_player.terminate()
+    else:
+      print "subprocess died?"
   
   def stop_mpc(self):
     print "mpc stop"
-    os.system("mpc stop")
+    self.popen("mpc stop")
+  
+  def popen(self, s, *args, **kw):
+    try:
+      print "[popen] {0}".format(s)
+      return subprocess.Popen(s, *args, **kw)
+    except Exception as e:
+      print "[popen error {0}] {1}".format(e.errno, e.strerror)
+      
+  def send(self, s):
+    print "send[1]: handling"
+    self.handle_serial()
+    print "send[2]: writing: %s" % s.strip()
+    self.serial.write(s)
+    print "send[3]: handling"
+    self.handle_serial(wait_for_ok=True)
+    print "send[4]: done"
+  
+  def send_status(self, s):
+    self.send("s%s" % s)
+
+  def handle_serial(self, wait_for_ok=False):
+    ok = False
+    
+    while self.serial.inWaiting():
+      ok = ok or self.handle_line()
+    
+    if wait_for_ok and not ok:
+      self.handle_line()
+    
+  def handle_line(self):
+    line = self.serial.readline().strip()
+    print "handle_line: %s" % line
+
+    if line[0] == 'r':
+      fields = line[1:].split(',')
+      new_selection_str, new_power, new_sw1, new_sw2 = fields
+      if new_power == '1':
+        new_power = True
+      else:
+        new_power = False
+  
+      new_selection = int(new_selection_str) + 1
+
+      if new_power:
+        if new_selection != self.selection or not self.power:
+          print "%s => %s" % (line, new_selection)
+          self.selection = new_selection
+          self.play(self.selection)
+      
+        self.power = new_power
+      elif self.power: # self.power is now off but used to be on
+        self.stop()
+  
+        self.power = new_power
+    elif line == 'ok':
+      pass #print "OK"
+    else:
+      print "Error: %s" % line
 
   def setup(self):
     print "setting up"
     for i in range(0, 12):
       s = "t%02dPyTitle #%d\n"  % (i, i)
       print s,
-      self.serial.write(s)
-      resp = self.serial.readline()
-      if resp != 'ok':
-        print "Error: %s" % resp
+      self.send(s)
 
   def loop(self):
-    selection = 0
-    power = False
-    sw1 = False
-    sw2 = False
-  
-    while True:
-      line = self.serial.readline().strip().split(',')
-      if len(line) == 5:
-        #print line
-        new_selection, selector_val, new_power, new_sw1, new_sw2 = line
-        if new_power == '0':
-          new_power = True
-        else:
-          new_power = False
-      
-        new_selection = self.get_selection(int(selector_val))
-        #print " => %s" % new_selection
+    timestr_sec = ""
 
-        if new_power:
-          if new_selection != selection or not power:
-            print "%s => %s" % (line, new_selection)
-            selection = new_selection
-            self.play(selection)
-          
-          power = new_power
-        elif power: # power is now off but used to be on
-          self.stop()
+    while True:
+      self.handle_serial()
       
-          power = new_power
-      else:
-        pass #print "x"
+      new_timestr = strftime("c%H%M", localtime())
+      #new_timestr_sec = strftime("%H:%M:%S", localtime())
+      #if timestr_sec != new_timestr_sec:
+      #  self.send_status(new_timestr_sec)
+      #  timestr_sec = new_timestr_sec
+        
+      if self.timestr != new_timestr:
+        print "sending time"
+        self.send(new_timestr)
+        self.timestr = new_timestr
+        print "done"
+      
+      sleep(0.1)
 
 p = Player()
-p.setup()
+#p.setup()
 p.loop()
